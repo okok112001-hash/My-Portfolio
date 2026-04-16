@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>자산 포트폴리오 비교</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f5f5f3; --bg3: #eeede9;
+    --text: #1a1a1a; --text2: #555; --text3: #999;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.2);
+    --blue: #185FA5; --radius: 10px; --radius-sm: 7px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1e; --bg2: #2a2a2a; --bg3: #333;
+      --text: #f0f0f0; --text2: #aaa; --text3: #666;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+      --blue: #5da3e8;
+    }
+  }
+  body { background: var(--bg3); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 16px; min-height: 100vh; }
+  h1 { font-size: 17px; font-weight: 500; color: var(--text); margin-bottom: 16px; }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 600px) { .g2 { grid-template-columns: 1fr; } }
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .ctitle { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 10px; }
+  .chart-box { position: relative; height: 170px; margin-bottom: 8px; }
+  .leg { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; min-height: 18px; }
+  .li { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text2); }
+  .ld { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .cat { margin-bottom: 7px; border: 0.5px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+  .ch { display: flex; align-items: center; gap: 6px; padding: 7px 10px; background: var(--bg2); cursor: pointer; user-select: none; }
+  .ccol { width: 18px; height: 18px; border-radius: 3px; border: 0.5px solid var(--border2); flex-shrink: 0; position: relative; overflow: hidden; cursor: pointer; }
+  .ccol input[type=color] { position: absolute; inset: 0; width: 130%; height: 130%; opacity: 0; cursor: pointer; border: none; padding: 0; margin: -2px; }
+  .cname { flex: 1; font-size: 13px; font-weight: 500; background: transparent; border: none; outline: none; color: var(--text); min-width: 0; cursor: text; }
+  .ctot { font-size: 11px; color: var(--text3); white-space: nowrap; }
+  .ctog { font-size: 10px; color: var(--text3); margin-left: 2px; flex-shrink: 0; }
+  .cdel { font-size: 12px; color: var(--text3); background: none; border: none; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; }
+  .cb { padding: 8px 10px; border-top: 0.5px solid var(--border); }
+  .ir { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
+  .iname { flex: 1; font-size: 12px; padding: 4px 7px; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); background: var(--bg2); color: var(--text); outline: none; min-width: 0; }
+  .ival { width: 75px; font-size: 12px; padding: 4px 7px; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); background: var(--bg2); color: var(--text); outline: none; text-align: right; }
+  .iunit { font-size: 11px; color: var(--text3); flex-shrink: 0; }
+  .idel { font-size: 12px; color: var(--text3); background: none; border: none; cursor: pointer; padding: 0; flex-shrink: 0; }
+  .addi { font-size: 11px; color: var(--blue); background: none; border: none; cursor: pointer; padding: 2px 0; margin-top: 1px; display: block; }
+  .addc { width: 100%; font-size: 12px; padding: 6px; border: 0.5px dashed var(--border2); border-radius: var(--radius-sm); background: none; color: var(--text2); cursor: pointer; margin-top: 4px; }
+  .addc:hover { background: var(--bg2); }
+  .dw { margin-top: 14px; background: var(--bg2); border-radius: var(--radius); padding: 14px; }
+  .dt { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 8px; }
+  .dg { display: flex; flex-wrap: wrap; gap: 7px; }
+  .dc { padding: 6px 12px; border-radius: var(--radius-sm); border: 0.5px solid var(--border); background: var(--bg); }
+  .dlb { font-size: 10px; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+  .dv { font-size: 14px; font-weight: 500; margin-top: 2px; }
+  .save-note { font-size: 11px; color: var(--text3); text-align: right; margin-top: 10px; }
+  input[type=number]::-webkit-inner-spin-button { opacity: 0.5; }
+</style>
+</head>
+<body>
+<h1>자산 포트폴리오 비교</h1>
+<div class="g2">
+  <div class="card">
+    <p class="ctitle">목표 포트폴리오</p>
+    <div class="chart-box"><canvas id="ct"></canvas></div>
+    <div class="leg" id="lt"></div>
+    <div id="cats-target"></div>
+    <button class="addc" onclick="addCat('target')">+ 항목 추가</button>
+  </div>
+  <div class="card">
+    <p class="ctitle">현재 포트폴리오</p>
+    <div class="chart-box"><canvas id="cc"></canvas></div>
+    <div class="leg" id="lc"></div>
+    <div id="cats-current"></div>
+    <button class="addc" onclick="addCat('current')">+ 항목 추가</button>
+  </div>
+</div>
+<div class="dw">
+  <p class="dt">목표 대비 현재 차이</p>
+  <div class="dg" id="dg"></div>
+</div>
+<p class="save-note">입력값은 이 기기에 자동 저장됩니다</p>
+
+<script>
+const uid = () => Math.random().toString(36).slice(2, 8);
+const PRESETS = ['#3266ad','#1D9E75','#D85A30','#BA7517','#7F77DD','#D4537E','#639922','#E24B4A'];
+const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const csum = c => c.items.reduce((s,i) => s + (parseFloat(i.val)||0), 0);
+
+const defaultState = () => ({
+  target: { cats: [
+    {id:uid(),name:'현금',color:'#3266ad',open:true,items:[{id:uid(),name:'원화',val:''}]},
+    {id:uid(),name:'주식',color:'#1D9E75',open:true,items:[{id:uid(),name:'',val:''}]},
+  ]},
+  current: { cats: [
+    {id:uid(),name:'현금',color:'#3266ad',open:true,items:[{id:uid(),name:'원화',val:''}]},
+    {id:uid(),name:'주식',color:'#1D9E75',open:true,items:[{id:uid(),name:'',val:''}]},
+  ]}
+});
+
+let S;
+try { const saved = localStorage.getItem('portfolio-v2'); S = saved ? JSON.parse(saved) : defaultState(); }
+catch(e) { S = defaultState(); }
+
+function save() { try { localStorage.setItem('portfolio-v2', JSON.stringify(S)); } catch(e) {} }
+
+const charts = {};
+
+function renderCats(side) {
+  const fa = document.activeElement, fid = fa?.dataset?.fid, fpos = fa?.selectionStart ?? null;
+  document.getElementById('cats-' + side).innerHTML = S[side].cats.map((cat, ci) => {
+    const tot = csum(cat);
+    return `<div class="cat"><div class="ch" onclick="tog('${side}',${ci})">
+<div class="ccol" style="background:${cat.color}" title="색상 변경"><input type="color" value="${cat.color}" data-fid="col-${cat.id}" onclick="event.stopPropagation()" oninput="event.stopPropagation();setCol('${side}',${ci},this.value)"></div>
+<input class="cname" value="${esc(cat.name)}" placeholder="항목명" data-fid="cn-${cat.id}" onclick="event.stopPropagation()" oninput="event.stopPropagation();setCN('${side}',${ci},this.value)">
+<span class="ctot">${tot > 0 ? tot.toLocaleString() + '만원' : ''}</span>
+<span class="ctog">${cat.open ? '▲' : '▼'}</span>
+<button class="cdel" onclick="event.stopPropagation();delCat('${side}',${ci})" title="삭제">✕</button>
+</div>${cat.open ? `<div class="cb">${cat.items.map((it,ii) => `<div class="ir">
+<input class="iname" placeholder="세부 항목명" value="${esc(it.name)}" data-fid="in-${it.id}" oninput="setIN('${side}',${ci},${ii},this.value)">
+<input class="ival" type="number" placeholder="0" value="${it.val}" min="0" data-fid="iv-${it.id}" oninput="setIV('${side}',${ci},${ii},this.value)">
+<span class="iunit">만원</span>
+<button class="idel" onclick="delItem('${side}',${ci},${ii})" title="삭제">✕</button>
+</div>`).join('')}
+<button class="addi" onclick="addItem('${side}',${ci})">+ 세부 항목 추가</button></div>` : ''}
+</div>`;
+  }).join('');
+  if (fid) {
+    const el = document.querySelector(`[data-fid="${fid}"]`);
+    if (el) { el.focus(); if (fpos !== null && el.setSelectionRange) try { el.setSelectionRange(fpos, fpos); } catch(e) {} }
+  }
+}
+
+function updLegend(side) {
+  const cats = S[side].cats, tot = cats.reduce((s,c) => s + csum(c), 0);
+  const el = document.getElementById('l' + side[0]);
+  el.innerHTML = tot === 0
+    ? '<span style="font-size:11px;color:var(--text3)">값을 입력하면 차트가 표시됩니다</span>'
+    : cats.map(c => `<span class="li"><span class="ld" style="background:${c.color}"></span>${c.name} ${Math.round(csum(c)/tot*100)}%</span>`).join('');
+}
+
+function updChart(side) {
+  const cats = S[side].cats, tot = cats.reduce((s,c) => s + csum(c), 0), ch = charts[side];
+  if (!ch) return;
+  const empty = tot === 0;
+  ch.data.datasets[0].data = cats.map(c => empty ? 1 : csum(c));
+  ch.data.datasets[0].backgroundColor = cats.map(c => empty ? '#d0d0d0' : c.color);
+  ch.data.labels = cats.map(c => c.name);
+  ch.update('none');
+}
+
+function updDiff() {
+  const tc = S.target.cats, cc = S.current.cats;
+  const tt = tc.reduce((s,c) => s + csum(c), 0), ct = cc.reduce((s,c) => s + csum(c), 0);
+  const el = document.getElementById('dg');
+  if (tt === 0 || ct === 0) {
+    el.innerHTML = '<span style="font-size:12px;color:var(--text3)">목표와 현재를 모두 입력하면 비교됩니다</span>';
+    return;
+  }
+  const names = [...new Set([...tc.map(c=>c.name), ...cc.map(c=>c.name)])];
+  el.innerHTML = names.map(n => {
+    const t = tc.find(c=>c.name===n), cu = cc.find(c=>c.name===n);
+    const d = Math.round(((cu?csum(cu)/ct*100:0) - (t?csum(t)/tt*100:0)) * 10) / 10;
+    const col = Math.abs(d)<1 ? '#1D9E75' : Math.abs(d)<5 ? '#BA7517' : '#A32D2D';
+    return `<div class="dc"><div class="dlb"><span style="width:7px;height:7px;border-radius:2px;background:${(t||cu).color};display:inline-block"></span>${n}</div><div class="dv" style="color:${col}">${d>0?'+':''}${d.toFixed(1)}%p</div></div>`;
+  }).join('');
+}
+
+function refresh(side) { renderCats(side); updLegend(side); updChart(side); updDiff(); save(); }
+function updVisuals(side) { updLegend(side); updChart(side); updDiff(); save(); }
+
+function tog(s,ci) { S[s].cats[ci].open=!S[s].cats[ci].open; refresh(s); }
+function setCol(s,ci,v) { S[s].cats[ci].color=v; refresh(s); }
+function setCN(s,ci,v) { S[s].cats[ci].name=v; updVisuals(s); }
+function delCat(s,ci) { S[s].cats.splice(ci,1); refresh(s); }
+function addCat(s) {
+  const used = S[s].cats.map(c=>c.color);
+  const col = PRESETS.find(c=>!used.includes(c)) || PRESETS[S[s].cats.length % PRESETS.length];
+  S[s].cats.push({id:uid(),name:'새 항목',color:col,open:true,items:[{id:uid(),name:'',val:''}]});
+  refresh(s);
+}
+function addItem(s,ci) { S[s].cats[ci].items.push({id:uid(),name:'',val:''}); refresh(s); }
+function delItem(s,ci,ii) { S[s].cats[ci].items.splice(ii,1); refresh(s); }
+function setIN(s,ci,ii,v) { S[s].cats[ci].items[ii].name=v; save(); }
+function setIV(s,ci,ii,v) {
+  S[s].cats[ci].items[ii].val = v;
+  const tot = csum(S[s].cats[ci]);
+  const catEls = document.querySelectorAll('#cats-'+s+' .cat');
+  if (catEls[ci]) { const sp = catEls[ci].querySelector('.ctot'); if(sp) sp.textContent = tot>0?tot.toLocaleString()+'만원':''; }
+  updVisuals(s);
+}
+
+['target','current'].forEach((side,i) => {
+  charts[side] = new Chart(document.getElementById(i===0?'ct':'cc'), {
+    type: 'doughnut',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 2, borderColor: 'transparent' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '58%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => {
+        const tot = ctx.dataset.data.reduce((a,b)=>a+b,0);
+        const p = tot>0 ? Math.round(ctx.parsed/tot*100) : 0;
+        return ` ${ctx.label}: ${ctx.parsed>0?ctx.parsed.toLocaleString()+'만원':'—'} (${p}%)`;
+      }}}}
+    }
+  });
+  refresh(side);
+});
+</script>
+</body>
+</html>
